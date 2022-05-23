@@ -1,95 +1,89 @@
 ---
 layout: post
-title: "A checklist for implementing background downloads"
+title: "The checklist for implementing background downloads"
 date: 2022-05-18 10:13:17 +0200
 categories: jekyll update
 ---
 
 # Overview
 
-- Downloading files in background is not that common
-- Requires knowledge related to networking and app's lifecycle
-- Extensive tutorial is here: [Apple doc][apple-doc]
-- This post is a summary/cookbook with a sample project
-- If your app declares background modes you don't need to create a special background session. For details see the [Apple doc][apple-doc]
+Large, time-consuming downloads are usually expected to be continued even if a user leaves an app.
+This is a quick summary of how to add basic support for background downloads.
+Checkout [the sample project][sample-project] to test how it works in practice.
+If you need a throughout explanation be sure to read [this article by Apple][apple-doc].
 
-## The steps
+# The checklist
 
 1. Create an `URLSession` with background configuration using [background(withIdentifier identifier: String)](https://developer.apple.com/documentation/foundation/urlsessionconfiguration/1407496-background)
 1. Implement [application(\_:handleEventsForBackgroundURLSession:completionHandler:)](https://developer.apple.com/documentation/uikit/uiapplicationdelegate/1622941-application) - retain the `completionHandler` to be used later.
 1. Implement [urlSessionDidFinishEvents(forBackgroundURLSession:)](https://developer.apple.com/documentation/foundation/urlsessiondelegate/1617185-urlsessiondidfinishevents) - move the downloaded file to the permanent location (usually inside `Documents` directory)
 1. Implement [urlSession(\_:downloadTask:didFinishDownloadingTo:)](https://developer.apple.com/documentation/foundation/urlsessiondownloaddelegate/1411575-urlsession) - update the UI if needed and call the `completionHandler` received by the `AppDelegate`
 
-The following part includes more detailed explanation of each step.
-
 # Step 1: Create a background session
 
-- A special session is needed to continue downloads even after the app terminates
-- You need to assign an identifier that enables you to restore the session on the next app launch
-- The identifier must be unique within your app
+For download tasks that are independed from an app's lifecycle you need to use a special `URLSession`.
+The listing below show how such session can be created.
+There is an exception here: if your app declares background modes you might not need such session (see [this][apple-doc]).
+
+The background session needs to have an identifier, that is unique within your app.
+This identifier is needed to restore the session across app launches.
 
 <!-- prettier-ignore-start -->
 {% highlight swift %}
-let sessionIdentifier = "background-session"
 let config = URLSessionConfiguration.background(
-  withIdentifier: sessionIdentifier)
+  withIdentifier: "background-session")
 let session = URLSession(
   configuration: config, delegate: self, delegateQueue: nil)
 {% endhighlight %}
 <!-- prettier-ignore-end -->
 
-- Notice that if `nil` is passed as a `delegateQueue` the system creates it's own serial queue to deliver the delegate events.
-- An interesting nuance is that URL session retains it's delegate until it's ivalidated.
+Note that passing `nil` as a `delegateQueue` tells the system to create the queue itself.
+If you provide your own queue make sure that it's serial to ensure the correct order of the delivered events.
 
-# Step 2: Implement app delegate
+# Step 2: Implement the app delegate callback
 
-- this is called when the app is relaunched by the system to handle the finished download task
-- the `completionHandler` will be needed to let the system know that we've finished handling the download. We'll call it later.
-
-<!-- Maybe we need to explain what's exacly an event? -->
+The [application(\_:handleEventsForBackgroundURLSession:completionHandler:)](https://developer.apple.com/documentation/uikit/uiapplicationdelegate/1622941-application) method is called if the app is relaunched to handle the completed download.
+The `completionHandler` will be needed later to tell the system that it should update the app's screenshot (for the App Switcher).
 
 <!-- prettier-ignore-start -->
 {% highlight swift %}
 func application(
   _ application: UIApplication,
   handleEventsForBackgroundURLSession identifier: String,
-  completionHandler: @escaping () -> Void) 
+  completionHandler: @escaping () -> Void)
 {
-  guard identifier == sessionIdentifier else { return }
   backgroundCompletionHandler = completionHandler
 }
 {% endhighlight %}
 <!-- prettier-ignore-end -->
 
-# Step 3: Move the downloaded file
+# Step 3: Save the downloaded file
 
-- Here the download has finished successfully and the system gives us the temporary file
-- We need to move the file to a permanent location, here we use the default `FileManager` to move it to the `Documents` folder
+The downloaded file is stored in a temporary location.
+When the download finishes the system calls [urlSessionDidFinishEvents(forBackgroundURLSession:)](https://developer.apple.com/documentation/foundation/urlsessiondelegate/1617185-urlsessiondidfinishevents) and makes the temporary file available until the method returns.
+In this example we'll use `FileManager` to move it to the static location in the `Documents` folder.
 
 <!-- prettier-ignore-start -->
 {% highlight swift %}
 func urlSession(
   _ session: URLSession,
   downloadTask: URLSessionDownloadTask,
-  didFinishDownloadingTo location: URL)
+  didFinishDownloadingTo temporaryFile: URL)
 {
-  let targetLocation = FileManager
-    .default.urls(for: .documentDirectory, in: .userDomainMask)
-    .first?
-    .appendingPathComponent("filename")
-  try? FileManager.default.moveItem(at: location, to: targetFileLocation)
+  try! FileManager.default.moveItem(at: temporaryFile, to: localFile)
 }
 {% endhighlight %}
 <!-- prettier-ignore-end -->
 
-# Step 4: Update the UI and let the system know
+# Step 4: Update the UI
 
-- you can update the UI
+The last step us to update the app's UI, so that the download status is visible when a user scrolls through the App Switcher.
+The delegate method can be called from an arbitrary queue, so be sure to dispatch to the main one before calling any of the `UIKit` classes.
+`backgroundCompletionHandler` must also be caled from the main queue.
 
 <!-- prettier-ignore-start -->
 {% highlight swift %}
   func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
-    // The background handler must be called on the main queue.
     DispatchQueue.main.async {
       backgroundCompletionHandler?()
     }
@@ -99,19 +93,18 @@ func urlSession(
 
 # Final notes
 
-- Background downloads are handled by a separate process therefore no custom `URLProtocol` classes are allowed
-- Provide estimated download size to help the system allocate resources for the operation
+- Custom `URLProtocol` implementations are not supported for background downloads, because the operation takes place in another process.
+- You can provide an estimated download size to help the system allocate resources and manage battery life.
 
 # Related topics
 
-- suspending, resuming download
-- the app's lifecycle
-- background modes
-- downloading files from websites [Doc](https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_from_websites)
-
-# References
-
-<!-- - Custom `URLProtocol` is not allowed for background sessions
-- -->
+- You can further improve the experience by supporting resumable downloads. Note that this needs to be supported by the server.
+- [Article - Downloading Files from Websites][download-from-websites]
+- [Article - Managing Your App's Life Cycle][app-lifecycle]
+- [Article - Configuring Background Execution Modes][background-modes]
 
 [apple-doc]: https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_in_the_background
+[sample-project]: https://github.com
+[download-from-websites]: (https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_from_websites)
+[app-lifecycle]: https://developer.apple.com/documentation/uikit/app_and_environment/managing_your_app_s_life_cycle
+[background-modes]: https://developer.apple.com/documentation/xcode/configuring-background-execution-modes
