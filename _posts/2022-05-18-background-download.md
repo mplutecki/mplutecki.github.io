@@ -14,10 +14,10 @@ If you need a throughout explanation be sure to read [this article by Apple][app
 
 # The checklist
 
-1. Create an `URLSession` with background configuration using [background(withIdentifier identifier: String)](https://developer.apple.com/documentation/foundation/urlsessionconfiguration/1407496-background)
-1. Implement [application(\_:handleEventsForBackgroundURLSession:completionHandler:)](https://developer.apple.com/documentation/uikit/uiapplicationdelegate/1622941-application) - retain the `completionHandler` to be used later.
-1. Implement [urlSessionDidFinishEvents(forBackgroundURLSession:)](https://developer.apple.com/documentation/foundation/urlsessiondelegate/1617185-urlsessiondidfinishevents) - move the downloaded file to the permanent location (usually inside `Documents` directory)
-1. Implement [urlSession(\_:downloadTask:didFinishDownloadingTo:)](https://developer.apple.com/documentation/foundation/urlsessiondownloaddelegate/1411575-urlsession) - update the UI if needed and call the `completionHandler` received by the `AppDelegate`
+1. Create an `URLSession` with background configuration using [background(withIdentifier identifier: String)][background-with-identifier]
+1. Implement [application(\_:handleEventsForBackgroundURLSession:completionHandler:)][application-handle-events] - retain the `completionHandler` to be used later.
+1. Implement [urlSession(\_:downloadTask:didFinishDownloadingTo:)][url-session-did-finish-downloading] - move the downloaded file to the permanent location
+1. Implement [urlSessionDidFinishEvents(forBackgroundURLSession:)][url-session-did-finish-events] - update the UI if needed and call the `completionHandler` received by the `AppDelegate`
 
 # Step 1: Create a background session
 
@@ -42,7 +42,7 @@ If you provide your own queue make sure that it's serial to ensure the correct o
 
 # Step 2: Implement the app delegate callback
 
-The [application(\_:handleEventsForBackgroundURLSession:completionHandler:)](https://developer.apple.com/documentation/uikit/uiapplicationdelegate/1622941-application) method is called if the app is relaunched to handle the completed download.
+The [application(\_:handleEventsForBackgroundURLSession:completionHandler:)][application-handle-events] method is called if the app is relaunched to handle the completed download.
 The `completionHandler` will be needed later to tell the system that it should update the app's screenshot (for the App Switcher).
 
 <!-- prettier-ignore-start -->
@@ -60,7 +60,7 @@ func application(
 # Step 3: Save the downloaded file
 
 The downloaded file is stored in a temporary location.
-When the download finishes the system calls [urlSessionDidFinishEvents(forBackgroundURLSession:)](https://developer.apple.com/documentation/foundation/urlsessiondelegate/1617185-urlsessiondidfinishevents) and makes the temporary file available until the method returns.
+When the download finishes the system calls [urlSessionDidFinishEvents(forBackgroundURLSession:)][url-session-did-finish-events] and makes the temporary file available until the method returns.
 In this example we'll use `FileManager` to move it to the static location in the `Documents` folder.
 
 <!-- prettier-ignore-start -->
@@ -108,3 +108,7 @@ The delegate method can be called from an arbitrary queue, so be sure to dispatc
 [download-from-websites]: (https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_from_websites)
 [app-lifecycle]: https://developer.apple.com/documentation/uikit/app_and_environment/managing_your_app_s_life_cycle
 [background-modes]: https://developer.apple.com/documentation/xcode/configuring-background-execution-modes
+[background-with-identifier]: https://developer.apple.com/documentation/foundation/urlsessionconfiguration/1407496-background
+[application-handle-events]: https://developer.apple.com/documentation/uikit/uiapplicationdelegate/1622941-application
+[url-session-did-finish-events]: https://developer.apple.com/documentation/foundation/urlsessiondelegate/1617185-urlsessiondidfinishevents
+[url-session-did-finish-downloading]: https://developer.apple.com/documentation/foundation/urlsessiondelegate/1617185-urlsessiondidfinishevents
