@@ -105,7 +105,7 @@ The delegate method can be called from an arbitrary queue, so be sure to dispatc
 
 [apple-doc]: https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_in_the_background
 [sample-project]: https://github.com
-[download-from-websites]: (https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_from_websites)
+[download-from-websites]: https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_from_websites
 [app-lifecycle]: https://developer.apple.com/documentation/uikit/app_and_environment/managing_your_app_s_life_cycle
 [background-modes]: https://developer.apple.com/documentation/xcode/configuring-background-execution-modes
 [background-with-identifier]: https://developer.apple.com/documentation/foundation/urlsessionconfiguration/1407496-background
