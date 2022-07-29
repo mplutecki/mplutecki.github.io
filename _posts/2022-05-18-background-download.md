@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "The checklist for implementing background downloads"
+title: "Background downloads"
 date: 2022-05-18 10:13:17 +0200
 categories: jekyll update
 ---
@@ -12,7 +12,7 @@ This is a quick summary of how to add basic support for background downloads.
 Checkout [the sample project][sample-project] to test how it works in practice.
 If you need a throughout explanation be sure to read [this article by Apple][apple-doc].
 
-# The checklist
+# The steps
 
 1. Create an `URLSession` with background configuration using [background(withIdentifier identifier: String)][background-with-identifier]
 1. Implement [application(\_:handleEventsForBackgroundURLSession:completionHandler:)][application-handle-events] - retain the `completionHandler` to be used later.
